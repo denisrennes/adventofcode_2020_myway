@@ -3,50 +3,40 @@ param()
 Set-StrictMode -Version 2.0
 $ErrorActionPreference = 'Stop'
 
+$Year = 2020
+$Day = 5
+$Part = 2
 
-$Dayx = 'Day5'
+$input_file = Join-Path $PSScriptRoot "${Year}_Day${Day}_input.txt"
 
-# Input file
-$input_file = Join-Path $PSScriptRoot "2020_${Dayx}_input.txt"
-
-
-# FBFBBFFRLR to Id
-function convert_FBLR_to_Id ( [string]$fblr ) {
-	$Row = [convert]::ToInt32((($fblr.SubString(0,7) -Replace 'F','0') -replace 'B','1'),2)
-	$Col = [convert]::ToInt32((($fblr.SubString(7,3) -Replace 'L','0') -replace 'R','1'),2)
-	$Id = ($Row * 8) + $Col
-	return $Id
+# FBFBBFFRLR to ID
+function convert_FBLR_to_ID ( [string]$fblr ) {
+	$Row = [convert]::ToInt32( (($fblr.SubString(0,7) -Replace 'F','0') -replace 'B','1'), 2 )
+	$Col = [convert]::ToInt32( (($fblr.SubString(7,3) -Replace 'L','0') -replace 'R','1'), 2 )
+	$ID = ($Row * 8) + $Col
+	return $ID
 }
 
-function convert_Id_to_RowCol ( [int]$Id ) {
-	[int]$Col = $Id % 8
-	[int]$Row = ($Id - $Col) / 8
-	return ( $Row, $Col )
-}
+# Boarding passes loaded from input and converted to ID's
+$boarding_pass_list = @( Get-Content $input_file | Foreach-Object { convert_FBLR_to_ID $_ } )
+write-verbose "$($boarding_pass_list.Count) boarding passes loaded from $input_file"
 
-# array of existing boarding pass (input) converted to Id
-$boarding_pass_list = @( Get-Content $input_file | Foreach-Object { convert_FBLR_to_Id $_ } )
-write-verbose "$($boarding_pass_list.Count) entries in $input_file"
+# ID's missing: ID's from 0 to 1023 missing in $boarding_pass_list
+$missing_boarding_pass_list = @( for ( $ID = 0; $ID -le 1023; $ID++ ) { if ( $ID -notin $boarding_pass_list ) { $ID } } )
+write-verbose "$($missing_boarding_pass_list.Count) missing ID's"
 
-# array of missing boarding pass: Id's from 0 to 1023 missing in $boarding_pass_list
-$missing_boarding_pass_list = @( for ( $Id = 0; $Id -le 1023; $Id++ ) { if ( $Id -notin $boarding_pass_list ) { $Id } } )
-write-verbose "$($missing_boarding_pass_list.Count) missing Id's"
-
-# array of missing boarding pass with ID-1 and ID+1 not missing
-$missing_boarding_pass_with_PrevAndNextId = @( foreach ( $Id in $missing_boarding_pass_list ) { 
-	if ( (($Id-1) -notin $missing_boarding_pass_list) -and (($Id+1) -notin $missing_boarding_pass_list) ) { $Id }
+# ID's missing with ID-1 and ID+1 not missing
+$missing_boarding_pass_with_PrevAndNextID = @( foreach ( $ID in $missing_boarding_pass_list ) { 
+	if ( (($ID-1) -notin $missing_boarding_pass_list) -and (($ID+1) -notin $missing_boarding_pass_list) ) { $ID }
 } )
-write-verbose "$($missing_boarding_pass_with_PrevAndNextId.Count) missing Id with ID-1 and ID+1 not missing."
+write-verbose "$($missing_boarding_pass_with_PrevAndNextID.Count) missing ID with ID-1 and ID+1 not missing."
 
-if ( $missing_boarding_pass_with_PrevAndNextId.Count -ne 1 ) {
-	$missing_boarding_pass_with_PrevAndNextId
-	throw "ERROR: more than 1 missing Id with with ID-1 and ID+1 not missing"
+if ( $missing_boarding_pass_with_PrevAndNextID.Count -ne 1 ) {
+	throw "ERROR: more than 1 missing ID with with ID-1 and ID+1 not missing"
 }
 else {
-	$result = $missing_boarding_pass_with_PrevAndNextId[0]
+	$result = $missing_boarding_pass_with_PrevAndNextID[0]
 }
-Write-Output ''
-Write-Output ($Dayx + ' part 2:')
-Write-Output "result = $result"
+Write-Output ( "${Year} Day ${Day} Part ${Part} result = ${result}")
 
 
